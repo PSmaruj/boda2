@@ -601,8 +601,10 @@ class StraightThroughParameters(ParamsBase):
         super().__init__()
 
         self.register_parameter('theta', nn.Parameter(data.detach().clone()))
-        self.register_buffer('left_flank', left_flank.detach().clone())
-        self.register_buffer('right_flank', right_flank.detach().clone())
+        if left_flank is not None:  
+            self.register_buffer('left_flank', left_flank.detach().clone())
+        if right_flank is not None: 
+            self.register_buffer('right_flank', right_flank.detach().clone())
         
         self.cat_axis = cat_axis
         self.batch_dim = batch_dim

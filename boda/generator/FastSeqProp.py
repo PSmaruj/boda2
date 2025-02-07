@@ -142,7 +142,13 @@ class FastSeqProp(nn.Module):
         else:
             self.param_hist = None
         if create_plot:
-            bsz = self.params.theta.shape[0]
+            
+            bsz = self.params.theta.shape[0]  
+            
+            print(np.repeat(np.arange(n_steps), bsz).shape)
+            print(np.stack(energy_hist).flatten().shape)
+            print(energy_hist[0].shape)
+                      
             plot_data = pd.DataFrame({
                 'step': np.repeat(np.arange(n_steps), bsz),
                 'energy': np.stack(energy_hist).flatten()

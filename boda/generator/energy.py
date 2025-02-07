@@ -351,11 +351,41 @@ class MinGapEnergy(BaseEnergy):
             torch.Tensor: Computed energy values.
 
         """
-        hook = x.to(self.model.device)
-        
+        # hook = x.to(self.model.device)
+        hook = x.to(next(self.model.parameters()).device)
         hook = self.bend(self.model(hook).clamp(self.a_min,self.a_max))
-        energy = hook[...,[ x for x in range(hook.shape[-1]) if x != self.target_feature]].max(-1).values \
-                 - hook[...,self.target_feature].mul(self.target_alpha)
+        
+        # hook = self.bend(self.model(hook).clamp(self.a_min,self.a_max))
+        # energy = hook[...,[ x for x in range(hook.shape[-1]) if x != self.target_feature]].max(-1).values \
+        #          - hook[...,self.target_feature].mul(self.target_alpha)
+        
+        if isinstance(self.target_feature, list):
+            energies = []
+            for target_slice in self.target_feature:
+                target_values = hook[..., target_slice]
+                max_values = hook[...,[x for x in range(hook.shape[-1]) if x not in range(target_slice.start, target_slice.stop)]].max(-1).values
+                max_values = max_values.unsqueeze(-1)
+                energy = max_values - target_values.mul(self.target_alpha)
+                energies.append(energy)
+        
+            # Combine energies, you can sum, average, or do whatever you need
+            # energy = torch.stack(energies, dim=-1).sum(dim=-1)  # Example: summing across energy for each slice
+            energy = torch.stack(energies, dim=-1).sum(dim=-1).sum(dim=-1)
+        
+        # If target_feature is a range, we compute energy differently
+        elif isinstance(self.target_feature, slice):
+            target_values = hook[..., self.target_feature]
+            max_values = hook[...,[x for x in range(hook.shape[-1]) if x not in range(self.target_feature.start, self.target_feature.stop)]].max(-1).values
+            
+            max_values = max_values.unsqueeze(-1)
+            energy = max_values - target_values.mul(self.target_alpha)
+            energy = energy.sum(dim=-1)
+            
+        else:
+            target_values = hook[..., self.target_feature]
+            max_values = hook[...,[x for x in range(hook.shape[-1]) if x != self.target_feature]].max(-1).values
+            energy = max_values - target_values.mul(self.target_alpha)
+        
         return energy
 
 class TargetEnergy(BaseEnergy):
