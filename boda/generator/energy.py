@@ -351,13 +351,8 @@ class MinGapEnergy(BaseEnergy):
             torch.Tensor: Computed energy values.
 
         """
-        # hook = x.to(self.model.device)
         hook = x.to(next(self.model.parameters()).device)
         hook = self.bend(self.model(hook).clamp(self.a_min,self.a_max))
-        
-        # hook = self.bend(self.model(hook).clamp(self.a_min,self.a_max))
-        # energy = hook[...,[ x for x in range(hook.shape[-1]) if x != self.target_feature]].max(-1).values \
-        #          - hook[...,self.target_feature].mul(self.target_alpha)
         
         if isinstance(self.target_feature, list):
             energies = []
@@ -369,7 +364,6 @@ class MinGapEnergy(BaseEnergy):
                 energies.append(energy)
         
             # Combine energies, you can sum, average, or do whatever you need
-            # energy = torch.stack(energies, dim=-1).sum(dim=-1)  # Example: summing across energy for each slice
             energy = torch.stack(energies, dim=-1).sum(dim=-1).sum(dim=-1)
         
         # If target_feature is a range, we compute energy differently
