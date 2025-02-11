@@ -127,15 +127,12 @@ def naive_mh_step(params, energy_fn, n_positions=1, temperature=1.0):
     u = torch.rand_like(old_energy).log()
     accept = u.le( (old_energy-new_energy)/temperature )
     
-    print("old_params.shape", old_params.shape)
-    print("params.theta.shape", params.theta.shape)
-    
-    sample = torch.stack([old_params, new_params], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
-    energy = torch.stack([old_energy, new_energy], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
-    
-    print("Sample shape:", sample.shape)
-    print("Sample numel:", sample.numel())
-    print("Old params numel:", old_params.numel())
+    # sample = torch.stack([old_params, new_params], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
+    sample = old_params.clone()
+    sample[accept.squeeze(-1)] = new_params[accept.squeeze(-1)]
+    # energy = torch.stack([old_energy, new_energy], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
+    energy = old_energy.clone()
+    energy[accept.squeeze(-1)] = new_energy[accept.squeeze(-1)]
     
     # params.theta.data = sample # metropolis corrected update
     params.theta.data = sample.view(old_params.shape)
@@ -441,8 +438,10 @@ class SimulatedAnnealing(nn.Module):
             
             energy_filter = final_energies <= energy_threshold
             
-            proposals = torch.cat([proposals,  final_states[energy_filter]], dim=0)
-            energies  = torch.cat([energies, final_energies[energy_filter]], dim=0)
+            # proposals = torch.cat([proposals,  final_states[energy_filter]], dim=0)
+            # energies  = torch.cat([energies, final_energies[energy_filter]], dim=0)
+            proposals = torch.cat([proposals, final_states[energy_filter.squeeze(-1)]], dim=0)
+            energies  = torch.cat([energies, final_energies[energy_filter.squeeze(-1)]], dim=0)
             
             print(f'attempt {attempts} acceptance rate: {energy_filter.sum().item()}/{energy_filter.numel()}')
             
