@@ -127,10 +127,18 @@ def naive_mh_step(params, energy_fn, n_positions=1, temperature=1.0):
     u = torch.rand_like(old_energy).log()
     accept = u.le( (old_energy-new_energy)/temperature )
     
+    print("old_params.shape", old_params.shape)
+    print("params.theta.shape", params.theta.shape)
+    
     sample = torch.stack([old_params, new_params], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
     energy = torch.stack([old_energy, new_energy], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
     
-    params.theta.data = sample # metropolis corrected update
+    print("Sample shape:", sample.shape)
+    print("Sample numel:", sample.numel())
+    print("Old params numel:", old_params.numel())
+    
+    # params.theta.data = sample # metropolis corrected update
+    params.theta.data = sample.view(old_params.shape)
     
     return {'state': sample.detach().clone().cpu(), 
             'energy': energy.detach().clone().cpu(), 
@@ -378,6 +386,7 @@ class SimulatedAnnealing(nn.Module):
             burnin = { k: torch.stack(v, dim=0) for k,v in burnin.items() }
     
         if n_steps >= 1:
+            print("step0", n_steps)
             print('collect samples', file=sys.stderr)
             samples = {'states':[], 'energies': [], 'acceptances': []}
             self.temperature_schedule.reset()

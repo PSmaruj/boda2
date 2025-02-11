@@ -365,6 +365,7 @@ class MinGapEnergy(BaseEnergy):
         
             # Combine energies, you can sum, average, or do whatever you need
             energy = torch.stack(energies, dim=-1).sum(dim=-1).sum(dim=-1)
+            # energy = torch.stack(energies, dim=-1).sum(dim=-1).sum(dim=-1).sum(dim=-1)
         
         # If target_feature is a range, we compute energy differently
         elif isinstance(self.target_feature, slice):
