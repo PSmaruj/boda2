@@ -687,7 +687,14 @@ class StraightThroughParameters(ParamsBase):
         samples = sampled_idxs.sample( (self.n_samples, ) )
         samples = F.one_hot(samples, num_classes=self.num_classes)
         samples = torch.transpose(samples, self.token_dim, self.cat_axis)
+        
+        if samples.shape[1] == 1:
+            samples = samples.repeat(1, 2, 1, 1)
+        
         probs = probs.repeat( self.n_samples, *[1 for i in range(self.n_dims)] )
+        
+        probs = probs.permute(0, 1, 3, 2)
+        
         samples = samples - probs.detach() + probs
         return samples
     
@@ -705,12 +712,16 @@ class StraightThroughParameters(ParamsBase):
         
         if self.left_flank is not None:
             pieces.append( self.left_flank.repeat(self.n_samples, *self.repeater) )
-            
+
+        my_sample = my_sample.permute(0, 1, 3, 2)
         pieces.append( my_sample )
         
         if self.right_flank is not None:
             pieces.append( self.right_flank.repeat(self.n_samples, *self.repeater) )
-            
+        
+        # Ensure all pieces have the same shape
+        pieces = [p if p.shape[1] == 2 else p.unsqueeze(1) for p in pieces]
+        
         return torch.cat( pieces, axis=self.cat_axis )
     
     def forward(self, x=None, tau=1.):

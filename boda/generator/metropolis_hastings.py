@@ -128,11 +128,17 @@ def naive_mh_step(params, energy_fn, n_positions=1, temperature=1.0):
     accept = u.le( (old_energy-new_energy)/temperature )
     
     # sample = torch.stack([old_params, new_params], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
-    sample = old_params.clone()
-    sample[accept.squeeze(-1)] = new_params[accept.squeeze(-1)]
     # energy = torch.stack([old_energy, new_energy], dim=0)[accept.long(),torch.arange(accept.numel())].detach().clone()
+    sample = old_params.clone()
     energy = old_energy.clone()
-    energy[accept.squeeze(-1)] = new_energy[accept.squeeze(-1)]
+    
+    if len(accept.squeeze(-1).shape) == 2:
+        majority_accept = accept.float().mean(dim=1) > 0.5
+        sample[majority_accept] = new_params[majority_accept]
+        energy[majority_accept] = new_energy[majority_accept]
+    elif len(accept.squeeze(-1).shape) == 1:
+        sample[accept.squeeze(-1)] = new_params[accept.squeeze(-1)]
+        energy[accept.squeeze(-1)] = new_energy[accept.squeeze(-1)]
     
     # params.theta.data = sample # metropolis corrected update
     params.theta.data = sample.view(old_params.shape)
@@ -440,8 +446,13 @@ class SimulatedAnnealing(nn.Module):
             
             # proposals = torch.cat([proposals,  final_states[energy_filter]], dim=0)
             # energies  = torch.cat([energies, final_energies[energy_filter]], dim=0)
-            proposals = torch.cat([proposals, final_states[energy_filter.squeeze(-1)]], dim=0)
-            energies  = torch.cat([energies, final_energies[energy_filter.squeeze(-1)]], dim=0)
+            if len(energy_filter.squeeze(-1).shape) == 2:
+                majority_filter = energy_filter.float().mean(dim=1) > 0.5  # Majority vote
+                proposals = torch.cat([proposals, final_states[majority_filter]], dim=0)
+                energies = torch.cat([energies, final_energies[majority_filter]], dim=0)
+            elif len(energy_filter.squeeze(-1).shape) == 1:
+                proposals = torch.cat([proposals, final_states[energy_filter.squeeze(-1)]], dim=0)
+                energies  = torch.cat([energies, final_energies[energy_filter.squeeze(-1)]], dim=0)
             
             print(f'attempt {attempts} acceptance rate: {energy_filter.sum().item()}/{energy_filter.numel()}')
             
